@@ -1,0 +1,29 @@
+{
+	"name": "@geonet/leaflet-wmgs",
+	"version": "1.0.0",
+	"description": "Leaflet.WMGS plugin (Web Map GeoJSON Service)",
+	"main": "index.js",
+	"scripts": {
+		"test": "mocha"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Parellin-Technologies-LLC/geonet-leaflet-wmgs.git"
+	},
+	"keywords": [
+		"leaflet",
+		"wmgs"
+	],
+	"author": "Nick Soggin",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/Parellin-Technologies-LLC/geonet-leaflet-wmgs/issues"
+	},
+	"homepage": "https://github.com/Parellin-Technologies-LLC/geonet-leaflet-wmgs#readme",
+	"dependencies": {
+		"@parellin/lightmap": "0.1.2",
+		"http-response-class": "1.2.4",
+		"leaflet": "1.4.0",
+		"leaflet-virtual-grid": "1.0.7"
+	}
+}
