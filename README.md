@@ -9,11 +9,11 @@ npm i -S @geonet/leaflet-wmgs
 
 ### Usage
 
-```
+```javascript
 const wmgs = new L.WMGS( {
 	crs: L.CRS.EPSG4326,
 	url: 'http://localhost:3000/wmgs',
-	// requestPerCell: true,
+	// requestPerCell: false,
 	// filterTimeRange: {},
 	defaultStyle: {
 		color: 'red'

@@ -1,0 +1,9 @@
+.git
+.idea
+.editorconfig
+.eslintrc
+.eslintrc.js
+jsdocs.js
+docs/
+test/
+Notes.txt

@@ -20,7 +20,6 @@ module.exports = {
 		JSON: true,
 		console: true,
 		'$': true,
-		'M': true,
 		document: true,
 		location: true,
 		window: true,
@@ -33,6 +32,8 @@ module.exports = {
 		alert: true,
 		import: true,
 		require: true,
+		module: true,
+		exports: true,
 		fetch: true
 	},
 	rules: {
@@ -64,6 +65,7 @@ module.exports = {
 			}
 		],
 		'block-spacing': [ 1, 'always' ],
+		'brace-style': 'off',
 		camelcase: 'off',
 		'comma-dangle': [ 1, 'never' ],
 		'comma-spacing': [
