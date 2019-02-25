@@ -23,7 +23,6 @@
 	"dependencies": {
 		"@parellin/lightmap": "0.1.2",
 		"http-response-class": "1.2.4",
-		"leaflet": "1.4.0",
-		"leaflet-virtual-grid": "1.0.7"
+		"leaflet": "1.4.0"
 	}
 }

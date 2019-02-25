@@ -5,16 +5,25 @@
  *******************************************************************************************************/
 'use strict';
 
-import { Util, GeoJSON, geoJSON, latLng, latLngBounds, CRS } from 'leaflet';
+console.log( L );
 
-import VirtualGrid from 'leaflet-virtual-grid';
+const
+	{
+		CRS,
+		Util,
+		geoJSON,
+		GeoJSON,
+		latLng,
+		latLngBounds
+	} = L;
 
+import VirtualGrid from './virtual-grid';
 import Response from 'http-response-class';
 import LightMap from '@parellin/lightmap';
 
 L.WMGS = VirtualGrid.extend( {
 	options: {
-		crs: CRS.EPSG3857,
+		crs: CRS.EPSG4326,
 		url: '',
 		// maxFeatures: null,
 		requestPerCell: false,
@@ -201,7 +210,7 @@ L.WMGS = VirtualGrid.extend( {
 		
 		for( const val of this._cache.values() ) {
 			timeframe.push( this.timeFromObjectId( val.feature._id ) );
-			this.currentVisibleTypes.set( val.feature.properties.type );
+			this.currentVisibleTypes.add( val.feature.properties.type );
 		}
 		
 		timeframe = timeframe.sort();
