@@ -31,6 +31,7 @@ L.WMGS = VirtualGrid.extend( {
 		} ),
 		query: {},
 		select: { type: true, properties: true, geometry: true },
+		showMeTheBoxes: false,
 		defaultStyle: {
 			color: 'blue',
 			opacity: 1,
@@ -45,9 +46,12 @@ L.WMGS = VirtualGrid.extend( {
 		to: 0
 	} ),
 	
+	currentQuery: {},
+	
 	currentVisibleTypes: new Set(),
 	
 	initialize( opts ) {
+		this.currentQuery = opts.query;
 		VirtualGrid.prototype.initialize.call( this, opts );
 		this.on( 'cellsupdated', this._cellsUpdated );
 	},
@@ -96,6 +100,28 @@ L.WMGS = VirtualGrid.extend( {
 		} );
 	},
 	
+	clearMap() {
+		this._cache.forEach( v => this._map.removeLayer( v ) );
+	},
+	
+	clearCache() {
+		this.clearMap();
+		this._cache.clear();
+	},
+	
+	getQuery() {
+		const query = { ...this.currentQuery };
+		query._id   = query._id || {};
+		return query;
+	},
+	
+	setQuery( opts ) {
+		this.currentQuery = { ...opts };
+		this.clearCache();
+		this._update();
+		return this.currentQuery;
+	},
+	
 	async getFeatures( bounds ) {
 		this._activeRequests++;
 		
@@ -108,30 +134,25 @@ L.WMGS = VirtualGrid.extend( {
 				action: 'getItems',
 				layer: 'default',
 				zoom: this._map.getZoom(),
-				query: {
-					_id: {},
-					geometry: {
-						$geoIntersects: {
-							$geometry: {
-								type: 'Polygon',
-								coordinates: [ [
-									[ bounds._southWest.lng, bounds._southWest.lat ],
-									[ bounds._northEast.lng, bounds._southWest.lat ],
-									[ bounds._northEast.lng, bounds._northEast.lat ],
-									[ bounds._southWest.lng, bounds._northEast.lat ],
-									[ bounds._southWest.lng, bounds._southWest.lat ]
-								] ]
-							}
-						}
-					},
-					...this.options.query
-				},
+				query: this.getQuery(),
 				select: this.options.select
 			};
 			
 			featureRequest.query._id.$nin = [ ...this._cache.keys() ];
-			
-			// console.log( this._cache.size );
+			featureRequest.query.geometry = {
+				$geoIntersects: {
+					$geometry: {
+						type: 'Polygon',
+						coordinates: [ [
+							[ bounds._southWest.lng, bounds._southWest.lat ],
+							[ bounds._northEast.lng, bounds._southWest.lat ],
+							[ bounds._northEast.lng, bounds._northEast.lat ],
+							[ bounds._southWest.lng, bounds._northEast.lat ],
+							[ bounds._southWest.lng, bounds._southWest.lat ]
+						] ]
+					}
+				}
+			};
 			
 			if( this.options.filterTimeRange.from ) {
 				featureRequest.query._id.$gte = this.objectIdToTime( this.options.filterTimeRange.from );
@@ -327,6 +348,22 @@ L.WMGS = VirtualGrid.extend( {
 	},
 	
 	createCell( bounds, coords ) {
+		if( this.options.showMeTheBoxes ) {
+			geoJSON( {
+				type: 'Feature',
+				geometry: {
+					type: 'Polygon',
+					coordinates: [ [
+						[ bounds._southWest.lng, bounds._southWest.lat ],
+						[ bounds._northEast.lng, bounds._southWest.lat ],
+						[ bounds._northEast.lng, bounds._northEast.lat ],
+						[ bounds._southWest.lng, bounds._northEast.lat ],
+						[ bounds._southWest.lng, bounds._southWest.lat ]
+					] ]
+				}
+			} ).addTo( this._map );
+		}
+		
 		if( this.options.onCreateCell ) {
 			this.options.onCreateCell( bounds, coords );
 		}
