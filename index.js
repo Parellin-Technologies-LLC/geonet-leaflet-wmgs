@@ -109,7 +109,7 @@ L.WMGS = VirtualGrid.extend( {
 				layer: 'default',
 				zoom: this._map.getZoom(),
 				query: {
-					_id: { $nin: [ ...this._cache.keys() ] },
+					_id: {},
 					geometry: {
 						$geoIntersects: {
 							$geometry: {
@@ -128,6 +128,10 @@ L.WMGS = VirtualGrid.extend( {
 				},
 				select: this.options.select
 			};
+			
+			featureRequest.query._id.$nin = [ ...this._cache.keys() ];
+			
+			// console.log( this._cache.size );
 			
 			if( this.options.filterTimeRange.from ) {
 				featureRequest.query._id.$gte = this.objectIdToTime( this.options.filterTimeRange.from );
@@ -300,16 +304,20 @@ L.WMGS = VirtualGrid.extend( {
 		} );
 	},
 	
-	async _cellsUpdated() {
+	async _cellsUpdated( e ) {
+		// console.log( e );
+		// console.log( 'active cells:', Object.keys( e.target._activeCells ).length );
+		// console.log( 'cells:', Object.keys( e.target._cells ).length );
+		
 		const
-			cells         = Object.keys( this._cells ),
+			cells         = Object.keys( e.target._activeCells ),
 			requestBounds = latLngBounds();
 		
 		for( let i = 0; i < cells.length; i++ ) {
 			if( this.options.requestPerCell ) {
-				await this.getFeatures( this._cells[ cells[ i ] ].bounds );
+				await this.getFeatures( e.target._activeCells[ cells[ i ] ].bounds );
 			} else {
-				requestBounds.extend( this._cells[ cells[ i ] ].bounds );
+				requestBounds.extend( e.target._activeCells[ cells[ i ] ].bounds );
 			}
 		}
 		
@@ -342,7 +350,7 @@ L.WMGS = VirtualGrid.extend( {
 					this._cache.delete( k );
 				}
 			} else {
-				if( bounds.contains( v.getBounds() ) ) {
+				if( bounds.contains( v.getBounds() ) || bounds.intersects( v.getBounds() ) ) {
 					this._map.removeLayer( v );
 					this._cache.delete( k );
 				}
