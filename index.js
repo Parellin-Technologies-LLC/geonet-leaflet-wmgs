@@ -45,14 +45,6 @@ L.WMGS = VirtualGrid.extend( {
 		this.on( 'cellsupdated', this._cellsUpdated );
 	},
 
-	getEvents: function() {
-		return {
-			moveend: this._update,
-			zoomstart: this._zoomstart,
-			zoomend: this._reset
-		};
-	},
-
 	async getTypes() {
 		return await this._customRequest( {
 			action: 'getTypes',
@@ -83,30 +75,19 @@ L.WMGS = VirtualGrid.extend( {
 		return this._currentQuery;
 	},
 
-	_reset: function() {
-		this._cells         = {};
-		this._activeCells   = {};
-		this._cellsToLoad   = 0;
-		this._cellsTotal    = 0;
-		this._cellNumBounds = this._getCellNumBounds();
-
-		this._resetWrap();
-		this._zooming = false;
-	},
-	
 	_cache: new LightMap(),
-	
+
 	_activeRequests: 0,
-	
+
 	_currentTimeRange: Object.seal( {
 		from: 0,
 		to: 0
 	} ),
-	
+
 	_currentQuery: {},
-	
+
 	_currentVisibleTypes: new Set(),
-	
+
 	_update() {
 		VirtualGrid.prototype._update.call( this );
 	},
@@ -118,31 +99,31 @@ L.WMGS = VirtualGrid.extend( {
 			body: opts
 		} );
 	},
-	
+
 	async _fetch( opts ) {
 		try {
 			opts._body = opts.body;
-			
+
 			if( opts.headers[ 'Content-Type' ].startsWith( 'application/json' ) ) {
 				opts.body = JSON.stringify( opts.body );
 			}
-			
+
 			const res = await fetch( this.options.url, opts );
-			
+
 			if( !Response.isSuccess( res.status ) ) {
 				return Promise.reject( await res.json() );
 			}
-			
+
 			if( opts.headers[ 'Content-Type' ].startsWith( 'application/json' ) ) {
 				return await res.json();
 			}
-			
+
 			return res;
 		} catch( e ) {
 			return Promise.reject( e );
 		}
 	},
-	
+
 	async _getFeatures( bounds ) {
 		this._activeRequests++;
 
@@ -194,7 +175,6 @@ L.WMGS = VirtualGrid.extend( {
 			} );
 
 			if( featureCollection && featureCollection.features.length ) {
-				// console.log( featureCollection)
 				// Immediately make cache reference so we don't request the same feature n * cell number of times
 				for( let i = 0; i < featureCollection.features.length; i++ ) {
 					this._cache.set( featureCollection.features[ i ]._id, null );
