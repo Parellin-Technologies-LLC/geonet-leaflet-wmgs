@@ -38,23 +38,46 @@ L.WMGS = VirtualGrid.extend( {
 			fillOpacity: 1
 		}
 	},
+
+	initialize( opts ) {
+		this._currentQuery = opts.query;
+		VirtualGrid.prototype.initialize.call( this, opts );
+		this.on( 'cellsupdated', this._cellsUpdated );
+	},
+
+	getEvents: function() {
+		var events = {
+			moveend: this._update,
+			zoomstart: this._zoomstart,
+			zoomend: this._reset
+		};
+
+		return events;
+	},
+
+	_reset: function() {
+		this._cells         = {};
+		this._activeCells   = {};
+		this._cellsToLoad   = 0;
+		this._cellsTotal    = 0;
+		this._cellNumBounds = this._getCellNumBounds();
+
+		this._resetWrap();
+		this._zooming = false;
+	},
 	
 	_cache: new LightMap(),
+	
 	_activeRequests: 0,
-	currentTimeRange: Object.seal( {
+	
+	_currentTimeRange: Object.seal( {
 		from: 0,
 		to: 0
 	} ),
 	
-	currentQuery: {},
+	_currentQuery: {},
 	
-	currentVisibleTypes: new Set(),
-	
-	initialize( opts ) {
-		this.currentQuery = opts.query;
-		VirtualGrid.prototype.initialize.call( this, opts );
-		this.on( 'cellsupdated', this._cellsUpdated );
-	},
+	_currentVisibleTypes: new Set(),
 	
 	_update() {
 		VirtualGrid.prototype._update.call( this );
@@ -110,16 +133,16 @@ L.WMGS = VirtualGrid.extend( {
 	},
 	
 	getQuery() {
-		const query = { ...this.currentQuery };
+		const query = { ...this._currentQuery };
 		query._id   = query._id || {};
 		return query;
 	},
 	
 	setQuery( opts ) {
-		this.currentQuery = { ...opts };
+		this._currentQuery = { ...opts };
 		this.clearCache();
 		this._update();
-		return this.currentQuery;
+		return this._currentQuery;
 	},
 	
 	async getFeatures( bounds ) {
@@ -140,23 +163,23 @@ L.WMGS = VirtualGrid.extend( {
 			
 			featureRequest.query._id.$nin = [ ...this._cache.keys() ];
 			
-			featureRequest.query.bbox = bounds.toBBoxString();
-			
+			// featureRequest.query.bbox = bounds.toBBoxString();
+
 			// featureRequest.query.geohash = 'sss';
-			// featureRequest.query.geometry = {
-			// 	$geoIntersects: {
-			// 		$geometry: {
-			// 			type: 'Polygon',
-			// 			coordinates: [ [
-			// 				[ bounds._southWest.lng, bounds._southWest.lat ],
-			// 				[ bounds._northEast.lng, bounds._southWest.lat ],
-			// 				[ bounds._northEast.lng, bounds._northEast.lat ],
-			// 				[ bounds._southWest.lng, bounds._northEast.lat ],
-			// 				[ bounds._southWest.lng, bounds._southWest.lat ]
-			// 			] ]
-			// 		}
-			// 	}
-			// };
+			featureRequest.query.geometry = {
+				$geoIntersects: {
+					$geometry: {
+						type: 'Polygon',
+						coordinates: [ [
+							[ bounds._southWest.lng, bounds._southWest.lat ],
+							[ bounds._northEast.lng, bounds._southWest.lat ],
+							[ bounds._northEast.lng, bounds._northEast.lat ],
+							[ bounds._southWest.lng, bounds._northEast.lat ],
+							[ bounds._southWest.lng, bounds._southWest.lat ]
+						] ]
+					}
+				}
+			};
 			
 			if( this.options.filterTimeRange.from ) {
 				featureRequest.query._id.$gte = this.objectIdToTime( this.options.filterTimeRange.from );
@@ -173,6 +196,7 @@ L.WMGS = VirtualGrid.extend( {
 			} );
 			
 			if( featureCollection && featureCollection.features.length ) {
+				// console.log( featureCollection)
 				// Immediately make cache reference so we don't request the same feature n * cell number of times
 				for( let i = 0; i < featureCollection.features.length; i++ ) {
 					this._cache.set( featureCollection.features[ i ]._id, null );
@@ -237,13 +261,13 @@ L.WMGS = VirtualGrid.extend( {
 		
 		for( const val of this._cache.values() ) {
 			timeframe.push( this.timeFromObjectId( val.feature._id ) );
-			this.currentVisibleTypes.add( val.feature.properties.type );
+			this._currentVisibleTypes.add( val.feature.properties.type );
 		}
 		
 		timeframe = timeframe.sort();
 		
-		this.currentTimeRange.from = timeframe[ 0 ];
-		this.currentTimeRange.to   = timeframe[ timeframe.length - 1 ];
+		this._currentTimeRange.from = timeframe[ 0 ];
+		this._currentTimeRange.to   = timeframe[ timeframe.length - 1 ];
 	},
 	
 	_addFeatures( features ) {
@@ -351,27 +375,27 @@ L.WMGS = VirtualGrid.extend( {
 		}
 	},
 	
-	createCell( bounds, coords ) {
-		if( this.options.showMeTheBoxes ) {
-			geoJSON( {
-				type: 'Feature',
-				geometry: {
-					type: 'Polygon',
-					coordinates: [ [
-						[ bounds._southWest.lng, bounds._southWest.lat ],
-						[ bounds._northEast.lng, bounds._southWest.lat ],
-						[ bounds._northEast.lng, bounds._northEast.lat ],
-						[ bounds._southWest.lng, bounds._northEast.lat ],
-						[ bounds._southWest.lng, bounds._southWest.lat ]
-					] ]
-				}
-			} ).addTo( this._map );
-		}
-		
-		if( this.options.onCreateCell ) {
-			this.options.onCreateCell( bounds, coords );
-		}
-	},
+	// createCell( bounds, coords ) {
+	// 	if( this.options.showMeTheBoxes ) {
+	// 		geoJSON( {
+	// 			type: 'Feature',
+	// 			geometry: {
+	// 				type: 'Polygon',
+	// 				coordinates: [ [
+	// 					[ bounds._southWest.lng, bounds._southWest.lat ],
+	// 					[ bounds._northEast.lng, bounds._southWest.lat ],
+	// 					[ bounds._northEast.lng, bounds._northEast.lat ],
+	// 					[ bounds._southWest.lng, bounds._northEast.lat ],
+	// 					[ bounds._southWest.lng, bounds._southWest.lat ]
+	// 				] ]
+	// 			}
+	// 		} ).addTo( this._map );
+	// 	}
+	//
+	// 	if( this.options.onCreateCell ) {
+	// 		this.options.onCreateCell( bounds, coords );
+	// 	}
+	// },
 	
 	cellEnter( bounds, coords ) {
 		if( this.options.onCellEnter ) {
