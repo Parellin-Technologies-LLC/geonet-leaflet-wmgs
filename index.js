@@ -82,8 +82,16 @@ L.WMGS = VirtualGrid.extend( {
 	_update() {
 		VirtualGrid.prototype._update.call( this );
 	},
+
+	async _customRequest( opts ) {
+		return await this._fetch( {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: opts
+		} );
+	},
 	
-	async fetch( opts ) {
+	async _fetch( opts ) {
 		try {
 			opts._body = opts.body;
 			
@@ -107,45 +115,7 @@ L.WMGS = VirtualGrid.extend( {
 		}
 	},
 	
-	async customRequest( opts ) {
-		return await this.fetch( {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: opts
-		} );
-	},
-	
-	async getTypes() {
-		return await this.customRequest( {
-			action: 'getTypes',
-			layer: 'default',
-			property: 'properties.type'
-		} );
-	},
-	
-	clearMap() {
-		this._cache.forEach( v => this._map.removeLayer( v ) );
-	},
-	
-	clearCache() {
-		this.clearMap();
-		this._cache.clear();
-	},
-	
-	getQuery() {
-		const query = { ...this._currentQuery };
-		query._id   = query._id || {};
-		return query;
-	},
-	
-	setQuery( opts ) {
-		this._currentQuery = { ...opts };
-		this.clearCache();
-		this._update();
-		return this._currentQuery;
-	},
-	
-	async getFeatures( bounds ) {
+	async _getFeatures( bounds ) {
 		this._activeRequests++;
 		
 		if( this._activeRequests === 1 ) {
@@ -189,7 +159,7 @@ L.WMGS = VirtualGrid.extend( {
 				featureRequest.query._id.$lte = this.objectIdToTime( this.options.filterTimeRange.to );
 			}
 			
-			const featureCollection = await this.fetch( {
+			const featureCollection = await this._fetch( {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: featureRequest
@@ -286,73 +256,7 @@ L.WMGS = VirtualGrid.extend( {
 		this._buildIndexes();
 	},
 	
-	async createFeature( e ) {
-		if( e.layer ) {
-			e = e.layer;
-		}
-		
-		const geojson = e.toGeoJSON();
-		
-		geojson.properties = geojson.properties || {};
-		
-		e = this._createNewLayer( geojson );
-		
-		if( this.options.onEachFeature ) {
-			this.options.onEachFeature( e.feature, e );
-		}
-		
-		return await this.fetch( {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: {
-				action: 'createItem',
-				layer: 'default',
-				data: geojson
-			}
-		} );
-	},
-	
-	async updateFeatures( e ) {
-		const
-			layers  = e.layers.getLayers(),
-			updates = [];
-		
-		for( let i = 0; i < layers.length; i++ ) {
-			updates.push(
-				await this.fetch( {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: {
-						action: 'updateItem',
-						layer: 'default',
-						query: { _id: layers[ i ]._id },
-						data: layers[ i ].feature
-					}
-				} )
-			);
-		}
-		
-		return Promise.all( updates );
-	},
-	
-	async deleteFeatures( e ) {
-		const _id = e.layers.getLayers().map( layer => layer.feature._id );
-		
-		if( !_id.length ) {
-			return _id;
-		}
-		
-		return await this.fetch( {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: {
-				action: 'deleteItem',
-				layer: 'default',
-				data: { _id }
-			}
-		} );
-	},
-	
+
 	async _cellsUpdated( e ) {
 		// console.log( e );
 		// console.log( 'active cells:', Object.keys( e.target._activeCells ).length );
@@ -364,39 +268,17 @@ L.WMGS = VirtualGrid.extend( {
 		
 		for( let i = 0; i < cells.length; i++ ) {
 			if( this.options.requestPerCell ) {
-				await this.getFeatures( e.target._activeCells[ cells[ i ] ].bounds );
+				await this._getFeatures( e.target._activeCells[ cells[ i ] ].bounds );
 			} else {
 				requestBounds.extend( e.target._activeCells[ cells[ i ] ].bounds );
 			}
 		}
 		
 		if( !this.options.requestPerCell ) {
-			await this.getFeatures( requestBounds );
+			await this._getFeatures( requestBounds );
 		}
 	},
-	
-	// createCell( bounds, coords ) {
-	// 	if( this.options.showMeTheBoxes ) {
-	// 		geoJSON( {
-	// 			type: 'Feature',
-	// 			geometry: {
-	// 				type: 'Polygon',
-	// 				coordinates: [ [
-	// 					[ bounds._southWest.lng, bounds._southWest.lat ],
-	// 					[ bounds._northEast.lng, bounds._southWest.lat ],
-	// 					[ bounds._northEast.lng, bounds._northEast.lat ],
-	// 					[ bounds._southWest.lng, bounds._northEast.lat ],
-	// 					[ bounds._southWest.lng, bounds._southWest.lat ]
-	// 				] ]
-	// 			}
-	// 		} ).addTo( this._map );
-	// 	}
-	//
-	// 	if( this.options.onCreateCell ) {
-	// 		this.options.onCreateCell( bounds, coords );
-	// 	}
-	// },
-	
+
 	cellEnter( bounds, coords ) {
 		if( this.options.onCellEnter ) {
 			this.options.onCellEnter( bounds, coords );
@@ -422,10 +304,41 @@ L.WMGS = VirtualGrid.extend( {
 			}
 		}
 	},
+
+	async getTypes() {
+		return await this._customRequest( {
+			action: 'getTypes',
+			layer: 'default',
+			property: 'properties.type'
+		} );
+	},
+
+	clearMap() {
+		this._cache.forEach( v => this._map.removeLayer( v ) );
+	},
+
+	clearCache() {
+		this.clearMap();
+		this._cache.clear();
+	},
+
+	getQuery() {
+		const query = { ...this._currentQuery };
+		query._id   = query._id || {};
+		return query;
+	},
+
+	setQuery( opts ) {
+		this._currentQuery = { ...opts };
+		this.clearCache();
+		this._update();
+		return this._currentQuery;
+	},
 	
 	timeFromObjectId( _id ) {
 		return new Date( Number.parseInt( _id.substring( 0, 8 ), 16 ) * 1000 );
 	},
+
 	objectIdToTime( date ) {
 		return Math.floor( new Date( date ).getTime() / 1000 ).toString( 16 ) + '0'.repeat( 16 );
 	}
