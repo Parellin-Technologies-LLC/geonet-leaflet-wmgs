@@ -139,20 +139,24 @@ L.WMGS = VirtualGrid.extend( {
 			};
 			
 			featureRequest.query._id.$nin = [ ...this._cache.keys() ];
-			featureRequest.query.geometry = {
-				$geoIntersects: {
-					$geometry: {
-						type: 'Polygon',
-						coordinates: [ [
-							[ bounds._southWest.lng, bounds._southWest.lat ],
-							[ bounds._northEast.lng, bounds._southWest.lat ],
-							[ bounds._northEast.lng, bounds._northEast.lat ],
-							[ bounds._southWest.lng, bounds._northEast.lat ],
-							[ bounds._southWest.lng, bounds._southWest.lat ]
-						] ]
-					}
-				}
-			};
+			
+			featureRequest.query.bbox = bounds.toBBoxString();
+			
+			// featureRequest.query.geohash = 'sss';
+			// featureRequest.query.geometry = {
+			// 	$geoIntersects: {
+			// 		$geometry: {
+			// 			type: 'Polygon',
+			// 			coordinates: [ [
+			// 				[ bounds._southWest.lng, bounds._southWest.lat ],
+			// 				[ bounds._northEast.lng, bounds._southWest.lat ],
+			// 				[ bounds._northEast.lng, bounds._northEast.lat ],
+			// 				[ bounds._southWest.lng, bounds._northEast.lat ],
+			// 				[ bounds._southWest.lng, bounds._southWest.lat ]
+			// 			] ]
+			// 		}
+			// 	}
+			// };
 			
 			if( this.options.filterTimeRange.from ) {
 				featureRequest.query._id.$gte = this.objectIdToTime( this.options.filterTimeRange.from );
