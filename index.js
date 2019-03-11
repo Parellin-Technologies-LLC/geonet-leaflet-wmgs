@@ -88,9 +88,9 @@ L.WMGS = VirtualGrid.extend( {
 
 	_currentVisibleTypes: new Set(),
 
-	_update() {
-		VirtualGrid.prototype._update.call( this );
-	},
+	// _update() {
+	// 	VirtualGrid.prototype._update.call( this );
+	// },
 
 	async _customRequest( opts ) {
 		return await this._fetch( {
@@ -276,7 +276,9 @@ L.WMGS = VirtualGrid.extend( {
 
 		for( let i = 0; i < cells.length; i++ ) {
 			if( this.options.requestPerCell ) {
-				await this._getFeatures( e.target._activeCells[ cells[ i ] ].bounds );
+				if ( e.target._activeCells[ cells[ i ] ] ) {
+					await this._getFeatures( e.target._activeCells[ cells[ i ] ].bounds );
+				}
 			} else {
 				requestBounds.extend( e.target._activeCells[ cells[ i ] ].bounds );
 			}
