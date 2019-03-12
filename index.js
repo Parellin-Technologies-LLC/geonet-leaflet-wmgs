@@ -87,11 +87,7 @@ L.WMGS = VirtualGrid.extend( {
 	_currentQuery: {},
 	
 	_currentVisibleTypes: new Set(),
-	
-	// _update() {
-	// 	VirtualGrid.prototype._update.call( this );
-	// },
-	
+
 	async _customRequest( opts ) {
 		return await this._fetch( {
 			method: 'POST',
@@ -295,98 +291,72 @@ L.WMGS = VirtualGrid.extend( {
 	
 	_objectIdToTime( date ) {
 		return Math.floor( new Date( date ).getTime() / 1000 ).toString( 16 ) + '0'.repeat( 16 );
+	},
+	
+	async createFeature( e ) {
+		if( e.layer ) {
+			e = e.layer;
+		}
+
+		const geojson = e.toGeoJSON();
+
+		geojson.properties = geojson.properties || {};
+
+		e = this._createNewLayer( geojson );
+
+		if( this.options.onEachFeature ) {
+			this.options.onEachFeature( e.feature, e );
+		}
+
+		return await this._fetch( {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: {
+				action: 'createItem',
+				layer: 'default',
+				data: geojson
+			}
+		} );
+	},
+
+	async updateFeatures( e ) {
+		const
+			layers  = e.layers.getLayers(),
+			updates = [];
+
+		for( let i = 0; i < layers.length; i++ ) {
+			updates.push(
+				await this._fetch( {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: {
+						action: 'updateItem',
+						layer: 'default',
+						query: { _id: layers[ i ]._id },
+						data: layers[ i ].feature
+					}
+				} )
+			);
+		}
+
+		return Promise.all( updates );
+	},
+
+	async deleteFeatures( e ) {
+		const _id = e.layers.getLayers().map( layer => layer.feature._id );
+
+		if( !_id.length ) {
+			return _id;
+		}
+
+		return await this._fetch( {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: {
+				action: 'deleteItem',
+				layer: 'default',
+				data: { _id }
+			}
+		} );
 	}
-	
-	// async createFeature( e ) {
-	// 	if( e.layer ) {
-	// 		e = e.layer;
-	// 	}
-	//
-	// 	const geojson = e.toGeoJSON();
-	//
-	// 	geojson.properties = geojson.properties || {};
-	//
-	// 	e = this._createNewLayer( geojson );
-	//
-	// 	if( this.options.onEachFeature ) {
-	// 		this.options.onEachFeature( e.feature, e );
-	// 	}
-	//
-	// 	return await this._fetch( {
-	// 		method: 'POST',
-	// 		headers: { 'Content-Type': 'application/json' },
-	// 		body: {
-	// 			action: 'createItem',
-	// 			layer: 'default',
-	// 			data: geojson
-	// 		}
-	// 	} );
-	// },
-	//
-	// async updateFeatures( e ) {
-	// 	const
-	// 		layers  = e.layers.getLayers(),
-	// 		updates = [];
-	//
-	// 	for( let i = 0; i < layers.length; i++ ) {
-	// 		updates.push(
-	// 			await this._fetch( {
-	// 				method: 'POST',
-	// 				headers: { 'Content-Type': 'application/json' },
-	// 				body: {
-	// 					action: 'updateItem',
-	// 					layer: 'default',
-	// 					query: { _id: layers[ i ]._id },
-	// 					data: layers[ i ].feature
-	// 				}
-	// 			} )
-	// 		);
-	// 	}
-	//
-	// 	return Promise.all( updates );
-	// },
-	//
-	// async deleteFeatures( e ) {
-	// 	const _id = e.layers.getLayers().map( layer => layer.feature._id );
-	//
-	// 	if( !_id.length ) {
-	// 		return _id;
-	// 	}
-	//
-	// 	return await this._fetch( {
-	// 		method: 'POST',
-	// 		headers: { 'Content-Type': 'application/json' },
-	// 		body: {
-	// 			action: 'deleteItem',
-	// 			layer: 'default',
-	// 			data: { _id }
-	// 		}
-	// 	} );
-	// },
-	
-	// cellEnter( bounds, coords ) {
-	// 	if( this.options.onCellEnter ) {
-	// 		this.options.onCellEnter( bounds, coords );
-	// 	}
-	// },
-	//
-	// cellLeave( bounds, coords ) {
-	// 	if( this.options.onCellLeave ) {
-	// 		this.options.onCellLeave( bounds, coords );
-	// 	}
-	//
-	// 	for( const [ k, v ] of this._cache ) {
-	// 		if( v.feature.geometry.type === 'Point' ) {
-	// 			if( bounds.contains( v.getLatLng() ) ) {
-	// 				this._map.removeLayer( v );
-	// 				this._cache.delete( k );
-	// 			}
-	// 		} else {
-	// 			if( bounds.contains( v.getBounds() ) || bounds.intersects( v.getBounds() ) ) {
-	// 				this._map.removeLayer( v );
-	// 				this._cache.delete( k );
-	// 			}
-	// 		}
-	// 	}
-	// },
 } );
