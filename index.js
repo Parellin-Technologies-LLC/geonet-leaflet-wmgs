@@ -52,6 +52,11 @@ L.WMGS = VirtualGrid.extend( {
 			property: 'properties.type'
 		} );
 	},
+
+	remove() {
+		this.clearCache();
+		VirtualGrid.prototype.remove.call( this );
+	},
 	
 	clearMap() {
 		this._cache.forEach( v => this._map.removeLayer( v ) );
@@ -258,6 +263,7 @@ L.WMGS = VirtualGrid.extend( {
 		}
 		
 		this._buildIndexes();
+		this.fire( 'featuresadded' );
 	},
 	
 	
