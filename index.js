@@ -7,6 +7,7 @@
 
 const
 	{
+		bounds,
 		CRS,
 		Util,
 		geoJSON,
@@ -57,6 +58,16 @@ L.WMGS = VirtualGrid.extend( {
 		this.clearCache();
 		VirtualGrid.prototype.remove.call( this );
 	},
+
+	getEvents: function() {
+		var events = {
+			moveend: this._update,
+			zoomstart: this._zoomstart,
+			zoomend: this._reset
+		};
+
+		return events;
+	},
 	
 	clearMap() {
 		this._cache.forEach( v => this._map.removeLayer( v ) );
@@ -65,6 +76,12 @@ L.WMGS = VirtualGrid.extend( {
 	clearCache() {
 		this.clearMap();
 		this._cache.clear();
+	},
+
+	addToCache( geojson ) {
+		const layer = this._createNewLayer( geojson );
+
+		this._cache.set( geojson._id, layer );
 	},
 	
 	getQuery() {
@@ -194,6 +211,25 @@ L.WMGS = VirtualGrid.extend( {
 			return Promise.reject( e );
 		}
 	},
+
+	_update: function() {
+		if( !this._map ) {
+			return;
+		}
+
+		var mapBounds = this._map.getPixelBounds();
+		var cellSize  = this._getCellSize();
+
+		// cell coordinates range for the current view
+		var cellBounds = bounds(
+			mapBounds.min.divideBy( cellSize ).floor(),
+			mapBounds.max.divideBy( cellSize ).floor() );
+
+		this._removeOtherCells( cellBounds );
+		this._addCells( cellBounds );
+
+		this.fire( 'cellsupdated' );
+	},
 	
 	_createNewLayer( geojson ) {
 		let layer;
@@ -231,7 +267,7 @@ L.WMGS = VirtualGrid.extend( {
 				}
 			}
 		}
-		
+
 		return layer;
 	},
 	
