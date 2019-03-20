@@ -1,6 +1,6 @@
 {
 	"name": "@geonet/leaflet-wmgs",
-	"version": "1.0.9",
+	"version": "1.0.10",
 	"description": "Leaflet.WMGS plugin (Web Map GeoJSON Service)",
 	"main": "index.js",
 	"scripts": {
