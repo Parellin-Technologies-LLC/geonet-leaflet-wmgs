@@ -37,7 +37,8 @@ L.WMGS = VirtualGrid.extend( {
 			color: 'blue',
 			opacity: 1,
 			fillOpacity: 1
-		}
+		},
+		defaultOptions: {}
 	},
 	
 	initialize( opts ) {
@@ -247,9 +248,11 @@ L.WMGS = VirtualGrid.extend( {
 				layer = geoJSON();
 			}
 		} else {
-			layer = GeoJSON.geometryToLayer( geojson );
+			layer = GeoJSON.geometryToLayer( geojson, {
+				...this.options.defaultOptions
+			} );
 		}
-		
+
 		if( layer ) {
 			layer.defaultOptions = layer.options;
 			layer.feature        = geojson;
@@ -265,6 +268,8 @@ L.WMGS = VirtualGrid.extend( {
 				} else {
 					layer.setStyle( this.options.defaultStyle );
 				}
+
+				layer.options.transform = this.options.transform;
 			}
 		}
 
