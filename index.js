@@ -40,13 +40,13 @@ L.WMGS = VirtualGrid.extend( {
 		},
 		defaultOptions: {}
 	},
-	
+
 	initialize( opts ) {
 		this._currentQuery = opts.query;
 		VirtualGrid.prototype.initialize.call( this, opts );
 		this.on( 'cellsupdated', this._cellsUpdated );
 	},
-	
+
 	async getTypes() {
 		return await this._customRequest( {
 			action: 'getTypes',
@@ -69,11 +69,11 @@ L.WMGS = VirtualGrid.extend( {
 
 		return events;
 	},
-	
+
 	clearMap() {
 		this._cache.forEach( v => this._map.removeLayer( v ) );
 	},
-	
+
 	clearCache() {
 		this.clearMap();
 		this._cache.clear();
@@ -84,31 +84,31 @@ L.WMGS = VirtualGrid.extend( {
 
 		this._cache.set( geojson._id, layer );
 	},
-	
+
 	getQuery() {
 		const query = { ...this._currentQuery };
 		query._id   = query._id || {};
 		return query;
 	},
-	
+
 	setQuery( opts ) {
 		this._currentQuery = { ...opts };
 		this.clearCache();
 		this._update();
 		return this._currentQuery;
 	},
-	
+
 	_cache: new LightMap(),
-	
+
 	_activeRequests: 0,
-	
+
 	_currentTimeRange: Object.seal( {
 		from: 0,
 		to: 0
 	} ),
-	
+
 	_currentQuery: {},
-	
+
 	_currentVisibleTypes: new Set(),
 
 	async _customRequest( opts ) {
@@ -118,38 +118,38 @@ L.WMGS = VirtualGrid.extend( {
 			body: opts
 		} );
 	},
-	
+
 	async _fetch( opts ) {
 		try {
 			opts._body = opts.body;
-			
+
 			if( opts.headers[ 'Content-Type' ].startsWith( 'application/json' ) ) {
 				opts.body = JSON.stringify( opts.body );
 			}
-			
+
 			const res = await fetch( this.options.url, opts );
-			
+
 			if( !Response.isSuccess( res.status ) ) {
 				return Promise.reject( await res.json() );
 			}
-			
+
 			if( opts.headers[ 'Content-Type' ].startsWith( 'application/json' ) ) {
 				return await res.json();
 			}
-			
+
 			return res;
 		} catch( e ) {
 			return Promise.reject( e );
 		}
 	},
-	
+
 	async _getFeatures( bounds ) {
 		this._activeRequests++;
-		
+
 		if( this._activeRequests === 1 ) {
 			this.fire( 'loading', { bounds }, true );
 		}
-		
+
 		try {
 			const featureRequest = {
 				action: 'getItems',
@@ -158,11 +158,11 @@ L.WMGS = VirtualGrid.extend( {
 				query: this.getQuery(),
 				select: this.options.select
 			};
-			
+
 			featureRequest.query._id.$nin = [ ...this._cache.keys() ];
-			
+
 			// featureRequest.query.bbox = bounds.toBBoxString();
-			
+
 			// featureRequest.query.geohash = 'sss';
 			featureRequest.query.geometry = {
 				$geoIntersects: {
@@ -178,27 +178,34 @@ L.WMGS = VirtualGrid.extend( {
 					}
 				}
 			};
-			
+
 			if( this.options.filterTimeRange.from ) {
 				featureRequest.query._id.$gte = this._objectIdToTime( this.options.filterTimeRange.from );
 			}
-			
+
 			if( this.options.filterTimeRange.to ) {
 				featureRequest.query._id.$lte = this._objectIdToTime( this.options.filterTimeRange.to );
 			}
-			
+
 			const featureCollection = await this._fetch( {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: featureRequest
 			} );
-			
+
 			if( featureCollection && featureCollection.features.length ) {
 				// Immediately make cache reference so we don't request the same feature n * cell number of times
-				for( let i = 0; i < featureCollection.features.length; i++ ) {
+				for ( let i = 0; i < featureCollection.features.length; i++ ) {
+					const feature = featureCollection.features[ i ];
+
+					if ( this.options.filter && !this.options.filter( feature ) ) {
+						featureCollection.features.splice( i, 1 );
+						continue;
+					}
+
 					this._cache.set( featureCollection.features[ i ]._id, null );
 				}
-				
+
 				Util.requestAnimFrame(
 					() => {
 						this._addFeatures( featureCollection.features );
@@ -206,7 +213,7 @@ L.WMGS = VirtualGrid.extend( {
 					}
 				);
 			}
-			
+
 			return featureCollection;
 		} catch( e ) {
 			return Promise.reject( e );
@@ -231,10 +238,10 @@ L.WMGS = VirtualGrid.extend( {
 
 		this.fire( 'cellsupdated' );
 	},
-	
+
 	_createNewLayer( geojson ) {
 		let layer;
-		
+
 		if( geojson.geometry.type === 'Point' ) {
 			if( this.options.pointToLayer ) {
 				layer = this.options.pointToLayer(
@@ -256,7 +263,7 @@ L.WMGS = VirtualGrid.extend( {
 		if( layer ) {
 			layer.defaultOptions = layer.options;
 			layer.feature        = geojson;
-			
+
 			// if it's a point, don't style it
 			if( geojson.geometry.type !== 'Point' ) {
 				if( layer.setStyle && layer.feature.properties ) {
@@ -275,50 +282,48 @@ L.WMGS = VirtualGrid.extend( {
 
 		return layer;
 	},
-	
+
 	_buildIndexes() {
 		let timeframe = [];
-		
+
 		for( const val of this._cache.values() ) {
 			timeframe.push( this._timeFromObjectId( val.feature._id ) );
 			this._currentVisibleTypes.add( val.feature.properties.type );
 		}
-		
+
 		timeframe = timeframe.sort();
-		
+
 		this._currentTimeRange.from = timeframe[ 0 ];
 		this._currentTimeRange.to   = timeframe[ timeframe.length - 1 ];
 	},
-	
+
 	_addFeatures( features ) {
 		for( let i = 0; i < features.length; i++ ) {
 			const
 				ref   = features[ i ],
 				layer = this._createNewLayer( ref );
 
-			if ( this.options.filter && !this.options.filter( layer.feature ) ) { continue; }
-
 			if ( this.options.onEachFeature ) {
 				this.options.onEachFeature( layer.feature, layer );
 			}
-			
+
 			this._cache.set( ref._id, layer );
 		}
-		
+
 		this._buildIndexes();
 		this.fire( 'featuresadded' );
 	},
-	
-	
+
+
 	async _cellsUpdated( e ) {
 		// console.log( e );
 		// console.log( 'active cells:', Object.keys( e.target._activeCells ).length );
 		// console.log( 'cells:', Object.keys( e.target._cells ).length );
-		
+
 		const
 			cells         = Object.keys( e.target._activeCells ),
 			requestBounds = latLngBounds();
-		
+
 		for( let i = 0; i < cells.length; i++ ) {
 			if( this.options.requestPerCell ) {
 				if( e.target._activeCells[ cells[ i ] ] ) {
@@ -328,20 +333,20 @@ L.WMGS = VirtualGrid.extend( {
 				requestBounds.extend( e.target._activeCells[ cells[ i ] ].bounds );
 			}
 		}
-		
+
 		if( !this.options.requestPerCell ) {
 			await this._getFeatures( requestBounds );
 		}
 	},
-	
+
 	_timeFromObjectId( _id ) {
 		return new Date( Number.parseInt( _id.substring( 0, 8 ), 16 ) * 1000 );
 	},
-	
+
 	_objectIdToTime( date ) {
 		return Math.floor( new Date( date ).getTime() / 1000 ).toString( 16 ) + '0'.repeat( 16 );
 	},
-	
+
 	async createFeature( e ) {
 		if( e.layer ) {
 			e = e.layer;
