@@ -295,13 +295,11 @@ L.WMGS = VirtualGrid.extend( {
 			const
 				ref   = features[ i ],
 				layer = this._createNewLayer( ref );
-			
+
+			if ( this.options.filter && !this.options.filter( layer.feature ) ) { continue; }
+
 			if ( this.options.onEachFeature ) {
 				this.options.onEachFeature( layer.feature, layer );
-			}
-
-			if ( this.options.filter ) {
-				this.options.filter( layer.feature );
 			}
 			
 			this._cache.set( ref._id, layer );
